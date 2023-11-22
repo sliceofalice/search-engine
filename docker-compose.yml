@@ -1,0 +1,53 @@
+version: '3'
+services:
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.10.0
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - http.cors.enabled=true
+      - http.cors.allow-origin=http://localhost:8080
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    networks:
+      - elk-net
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:7.10.0
+    container_name: kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    networks:
+      - elk-net
+
+  web:
+    image: nginx:latest
+    container_name: website
+    volumes:
+      - ./website:/usr/share/nginx/html
+    ports:
+      - "8080:80"
+    networks:
+      - elk-net
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:7.10.0
+    container_name: logstash
+    volumes:
+      - ./logstash/config/:/usr/share/logstash/config/
+      - ./logstash/pipeline/:/usr/share/logstash/pipeline/
+      - ./logstash/csv:/csv
+    command: ["-f", "/usr/share/logstash/pipeline/csv-pipeline.conf"]
+    environment:
+      - "ES_HOST=elasticsearch"
+      - "ES_PORT=9200"
+    networks:
+      - elk-net
+
+networks:
+  elk-net:
+    driver: bridge
